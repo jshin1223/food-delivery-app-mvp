@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { centsToDollars } from '@/lib/price';
 
 type OrderRow = {
@@ -16,10 +16,15 @@ type OrderRow = {
 export default function Orders() {
   const [rows, setRows] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const supabase = createSupabaseBrowserClient();
 
   const fetchRows = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setRows([]); setLoading(false); return; }
+    if (!user) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from('orders')
@@ -33,12 +38,12 @@ export default function Orders() {
 
   useEffect(() => {
     fetchRows();
-    // realtime updates
     const sub = supabase
       .channel('orders-history')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchRows)
       .subscribe();
-    return () => { sub.unsubscribe(); };
+    return () => { supabase.removeChannel(sub); };
+    // Always clean up subscriptions!
   }, []);
 
   if (loading) return <div>Loading…</div>;
@@ -49,7 +54,7 @@ export default function Orders() {
       {rows.length === 0 && <div className="opacity-70">No orders yet.</div>}
       <ul className="grid gap-2">
         {rows.map((r) => (
-          <li key={r.id} className="border rounded-xl p-3 flex items-center justify-between">
+          <li key={r.id} className="border rounded-xl p-3 flex items-center justify-between bg-white shadow-sm">
             <div>
               <div className="font-medium">
                 {r.boxes?.title ?? 'Box'} · {r.qty} × {centsToDollars(r.unit_price_cents)}

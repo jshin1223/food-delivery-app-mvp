@@ -1,26 +1,145 @@
 @import "tailwindcss";
 
+/* ---- Color Variables and Font Setup ---- */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primary: #2563eb;           /* Tailwind blue-600 */
+  --primary-hover: #1d4ed8;     /* Tailwind blue-700 */
+  --border-radius: 0.75rem;
+  --box-shadow: 0 2px 8px 0 rgba(23,23,23,0.06);
+  --font-sans: system-ui, Arial, Helvetica, sans-serif;
+  --font-mono: Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* ---- Dark Mode ---- */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --box-shadow: 0 2px 8px 0 rgba(0,0,0,0.4);
   }
 }
 
+/* ---- Base Body Styles ---- */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  margin: 0;
+  min-height: 100vh;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ---- Headings and Typography ---- */
+h1, h2, h3, h4 {
+  font-family: var(--font-sans);
+  font-weight: bold;
+  color: var(--foreground);
+  margin-top: 0;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+a:hover, a:active {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+/* ---- Forms ---- */
+input, button, select, textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  border-radius: var(--border-radius);
+  border: 1px solid #e5e7eb;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+input:focus, select:focus, textarea:focus, button:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+}
+button {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  box-shadow: var(--box-shadow);
+}
+button:hover, button:active {
+  background: var(--primary-hover);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Cards & Container ---- */
+.card {
+  background: var(--background);
+  color: var(--foreground);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+/* ---- Navbar ---- */
+nav {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: var(--box-shadow);
+}
+nav a {
+  color: #fff;
+  font-weight: 500;
+  margin-right: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius);
+  transition: background 0.15s, color 0.15s;
+}
+nav a:hover, nav a:active {
+  background: var(--primary-hover);
+  color: #fff;
+}
+
+/* ---- Utility Classes ---- */
+.rounded-xl { border-radius: 1rem; }
+.shadow-xl  { box-shadow: 0 4px 16px rgba(23,23,23,0.12); }
+
+/* ---- Accessibility ---- */
+*:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ---- Responsive padding for main containers ---- */
+@media (max-width: 640px) {
+  main {
+    padding: 1rem;
+  }
+}
+
+/* ---- Scrollbar Styling ---- */
+::-webkit-scrollbar {
+  width: 10px;
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 5px;
+}
+
+/* ---- Animate pulse for loading states ---- */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
