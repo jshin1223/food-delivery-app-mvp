@@ -3,23 +3,20 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 
-const requireRoles = (roles: string[]) => async (req: NextRequest) => {
+const requireRoles = (roles: Array<"customer"|"restaurant"|"admin">) => async (req: NextRequest) => {
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.redirect(new URL("/public/login", req.url));
-  }
+  if (!user) return NextResponse.redirect(new URL("/public/login", req.url));
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("roles")
+    .select("role")
     .eq("id", user.id)
     .single();
 
-  const allowed = (profile?.roles ?? []).some((r: string) => roles.includes(r));
-  if (!allowed) {
+  if (!profile?.role || !roles.includes(profile.role)) {
     return NextResponse.redirect(new URL("/", req.url));
   }
   return res;
@@ -27,9 +24,8 @@ const requireRoles = (roles: string[]) => async (req: NextRequest) => {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = new URL(req.url);
-
   if (pathname.startsWith("/restaurant")) {
-    return (await requireRoles(["restaurant", "admin"])(req))!;
+    return (await requireRoles(["restaurant","admin"])(req))!;
   }
   if (pathname.startsWith("/admin")) {
     return (await requireRoles(["admin"])(req))!;
@@ -37,6 +33,4 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = {
-  matcher: ["/restaurant/:path*", "/admin/:path*"],
-};
+export const config = { matcher: ["/restaurant/:path*", "/admin/:path*"] };

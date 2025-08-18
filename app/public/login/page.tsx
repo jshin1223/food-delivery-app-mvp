@@ -1,4 +1,6 @@
 // app/public/login/page.tsx
+
+import Link from "next/link";
 import { login } from "../actions";
 
 export default function LoginPage() {
@@ -36,6 +38,12 @@ export default function LoginPage() {
           Sign in
         </button>
       </form>
+
+      <p className="mt-2 text-sm">
+        <Link href="/public/forgot-password" className="text-blue-600 underline">
+          Forgot password?
+        </Link>
+      </p>
 
       <p className="text-sm text-gray-500">
         Tip: Create users in Supabase Auth. Assign roles in <code>public.profiles.roles</code>.

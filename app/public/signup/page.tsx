@@ -11,13 +11,16 @@ export default function SignUpPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [signupAs, setSignupAs] = useState<"customer" | "restaurant">("customer");
+  const [signupAs, setSignupAs] = useState<"customer" | "restaurant" | "admin">("customer");
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleSignUp = async (e: React.FormEvent) => {
+    console.log("SIGNUP FORM SUBMITTED");
     e.preventDefault();
     setLoading(true);
 
+    // Step 1: Create the user in Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -36,13 +39,15 @@ export default function SignUpPage() {
       return;
     }
 
-    // Build roles array
-    const roles = signupAs === "restaurant" ? ["customer", "restaurant"] : ["customer"];
+    // Step 2: Log the exact values being sent to Supabase
+    // This will appear in the browser's developer console to help debug issues
+    console.log("INSERTING PROFILE", userId, fullName, signupAs);
 
+    // Step 3: Insert the user profile into your database
     const { error: profileError } = await supabase.from("profiles").insert({
       id: userId,
       full_name: fullName,
-      roles,
+      role: signupAs,
     });
 
     if (profileError) {
@@ -51,14 +56,16 @@ export default function SignUpPage() {
       return;
     }
 
-    // Go to login after successful signup
-    router.push("/login");
+    setSuccess(true); // Show confirmation message
+    setLoading(false);
+
+    // Step 4: Redirect to login after a short pause (3 seconds)
+    setTimeout(() => router.push("/public/login"), 3000);
   };
 
   return (
     <main className="max-w-md mx-auto mt-10 bg-white shadow rounded p-6">
       <h1 className="text-2xl font-bold mb-4">Create your account</h1>
-
       <form onSubmit={handleSignUp} className="space-y-4">
         <input
           type="text"
@@ -68,7 +75,6 @@ export default function SignUpPage() {
           onChange={(e) => setFullName(e.target.value)}
           required
         />
-
         <input
           type="email"
           placeholder="Email"
@@ -77,7 +83,6 @@ export default function SignUpPage() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
-
         <input
           type="password"
           placeholder="Password"
@@ -86,7 +91,6 @@ export default function SignUpPage() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-
         <div className="space-y-2">
           <div className="font-medium">Sign up as</div>
           <label className="flex items-center gap-2">
@@ -109,11 +113,20 @@ export default function SignUpPage() {
             />
             Restaurant (vendor)
           </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="role"
+              value="admin"
+              checked={signupAs === "admin"}
+              onChange={() => setSignupAs("admin")}
+            />
+            Admin
+          </label>
           <p className="text-sm text-gray-600">
-            Admins are assigned manually by Wyzly staff (not selectable here).
+            <span className="font-semibold text-red-600">Warning:</span> Only select Admin for trusted accounts. For production, restrict admin role assignment to internal users.
           </p>
         </div>
-
         <button
           type="submit"
           disabled={loading}
@@ -121,14 +134,18 @@ export default function SignUpPage() {
         >
           {loading ? "Creating..." : "Sign Up"}
         </button>
-
         <p className="text-center text-sm">
           Already have an account?{" "}
-          <a className="text-blue-600 hover:underline" href="/login">
+          <a className="text-blue-600 hover:underline" href="/public/login">
             Log in
           </a>
         </p>
       </form>
+      {success && (
+        <div className="mt-6 p-4 rounded shadow bg-green-50 text-green-700 border border-green-300 text-center">
+          Please check your email to confirm your registration.
+        </div>
+      )}
     </main>
   );
 }
