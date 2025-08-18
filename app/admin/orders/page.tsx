@@ -11,22 +11,22 @@ async function setOrderStatus(id: string, status: "pending" | "completed") {
 }
 
 export default async function AdminOrdersPage() {
-  const supabase = await supabaseServerRSC(); // ✅ await
+  const supabase = await supabaseServerRSC();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return <p className="p-6">Please sign in.</p>;
 
-  // confirm admin
-  const { data: profile } = await supabase
+  // Check if user is an admin
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("roles")
+    .select("role")
     .eq("id", user.id)
     .single();
 
-  if (!profile?.roles?.includes("admin")) {
+  if (profileError || profile?.role !== "admin") {
     return <p className="p-6">Not authorized.</p>;
   }
 
-  // Admin sees ALL orders
+  // Fetch all orders for admins
   const { data: orders } = await supabase
     .from("orders")
     .select("id, qty, unit_price_cents, status, created_at, boxes(title)")
@@ -41,17 +41,31 @@ export default async function AdminOrdersPage() {
       ) : (
         <ul className="space-y-3">
           {orders.map((o) => (
-            <li key={o.id} className="border rounded p-3 flex items-center justify-between">
+            <li
+              key={o.id}
+              className="border rounded p-3 flex items-center justify-between"
+            >
               <div>
                 <div className="font-semibold">{o.boxes?.title ?? "Box"}</div>
                 <div className="text-sm">
-                  Qty {o.qty} • ${(o.unit_price_cents/100).toFixed(2)}
+                  Qty {o.qty} • ${(o.unit_price_cents / 100).toFixed(2)}
                 </div>
-                <div className="text-xs opacity-70">{new Date(o.created_at).toLocaleString()}</div>
+                <div className="text-xs opacity-70">
+                  {new Date(o.created_at).toLocaleString()}
+                </div>
               </div>
-              <form action={async () => setOrderStatus(o.id, o.status === "completed" ? "pending" : "completed")}>
+              <form
+                action={async () =>
+                  setOrderStatus(
+                    o.id,
+                    o.status === "completed" ? "pending" : "completed"
+                  )
+                }
+              >
                 <button className="rounded px-3 py-1 border">
-                  {o.status === "completed" ? "Mark Pending" : "Mark Completed"}
+                  {o.status === "completed"
+                    ? "Mark Pending"
+                    : "Mark Completed"}
                 </button>
               </form>
             </li>

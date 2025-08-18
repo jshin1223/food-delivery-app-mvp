@@ -1,50 +1,114 @@
+"use client";
+
 import Link from "next/link";
-import { supabaseServerRSC } from "@/lib/supabase/server";
-import { logout } from "@/app/public/actions";
+import { useEffect, useState } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export const dynamic = "force-dynamic"; // ensure SSR re-evaluates per request
+type Role = "customer" | "restaurant" | "admin" | null;
 
-export default async function Navbar() {
-  const supabase = await supabaseServerRSC();
-  const { data: { user } } = await supabase.auth.getUser();
+export default function Navbar() {
+  const supabase = createSupabaseBrowserClient();
+  const [role, setRole] = useState<Role>(null);
+  const [loading, setLoading] = useState(true);
 
-  let roles: string[] = [];
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("roles")
-      .eq("id", user.id)
-      .single();
-    roles = profile?.roles ?? [];
-  }
+  useEffect(() => {
+    const fetchRole = async () => {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setRole(null);
+        setLoading(false);
+        return;
+      }
 
-  const isAdmin = roles.includes("admin");
-  const isRestaurant = roles.includes("restaurant");
-  const isCustomer = roles.includes("customer");
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("roles")
+        .eq("id", user.id)
+        .single();
+
+      if (error || !data?.roles) {
+        console.warn("Error fetching role:", error);
+        setRole(null);
+      } else {
+        setRole(data.roles as Role);
+      }
+
+      setLoading(false);
+    };
+
+    fetchRole();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      fetchRole();
+    });
+
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
-    <nav className="w-full border-b bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-        {/* Left nav links */}
-        <div className="flex gap-4 text-sm items-center">
-          <Link href="/" className="text-lg font-bold">Wyzly</Link>
-          <Link href="/">Browse</Link>
-          {user && isCustomer && <Link href="/customer/orders">My Orders</Link>}
-          {user && isRestaurant && <Link href="/restaurant/dashboard">Restaurant Dashboard</Link>}
-          {user && isAdmin && <Link href="/admin/orders">Admin Orders</Link>}
-        </div>
-        {/* Right nav links */}
-        <div className="flex gap-4 text-sm items-center">
-          {!user && (
+    <nav className="w-full bg-blue-600 text-white px-6 py-3 shadow-md">
+      <div className="max-w-6xl mx-auto flex justify-between items-center">
+        <Link href="/" className="text-xl font-bold">
+          Wyzly
+        </Link>
+
+        <div className="flex gap-4 items-center">
+          <Link href="/browse" className="hover:underline">
+            Browse
+          </Link>
+
+          {loading ? null : (
             <>
-              <Link href="/public/login">Login</Link>
-              <Link href="/public/signup">Sign Up</Link>
+              {role === null && (
+                <>
+                  <Link href="/public/login" className="hover:underline">
+                    Login
+                  </Link>
+                  <Link href="/public/signup" className="hover:underline">
+                    Sign Up
+                  </Link>
+                </>
+              )}
+
+              {role === "customer" && (
+                <>
+                  <span className="text-sm text-gray-200">Logged in as Customer</span>
+                  <Link href="/customer/orders" className="hover:underline">
+                    My Orders
+                  </Link>
+                  <Link href="/logout" className="hover:underline">
+                    Logout
+                  </Link>
+                </>
+              )}
+
+              {role === "restaurant" && (
+                <>
+                  <span className="text-sm text-gray-200">Logged in as Restaurant</span>
+                  <Link href="/restaurant/dashboard" className="hover:underline">
+                    Restaurant Dashboard
+                  </Link>
+                  <Link href="/logout" className="hover:underline">
+                    Logout
+                  </Link>
+                </>
+              )}
+
+              {role === "admin" && (
+                <>
+                  <span className="text-sm text-gray-200">Logged in as Admin</span>
+                  <Link href="/admin/orders" className="hover:underline">
+                    Admin Orders
+                  </Link>
+                  <Link href="/logout" className="hover:underline">
+                    Logout
+                  </Link>
+                </>
+              )}
             </>
-          )}
-          {user && (
-            <form action={logout}>
-              <button type="submit" className="underline">Logout</button>
-            </form>
           )}
         </div>
       </div>

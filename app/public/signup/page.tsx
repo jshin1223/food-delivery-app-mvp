@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { seedProfile } from "../actions"; // ✅ FIXED
 
 export default function SignUpPage() {
   const supabase = createSupabaseBrowserClient();
@@ -16,51 +17,38 @@ export default function SignUpPage() {
   const [success, setSuccess] = useState(false);
 
   const handleSignUp = async (e: React.FormEvent) => {
-    console.log("SIGNUP FORM SUBMITTED");
     e.preventDefault();
     setLoading(true);
 
-    // Step 1: Create the user in Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName, requested_role: signupAs },
+        },
+      });
 
-    if (error) {
-      alert(error.message);
+      if (error) throw error;
+
+      const userId = data.user?.id;
+      if (!userId) {
+        alert("Sign-up created, but no user ID yet. Check your email confirmation settings.");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ call server action to insert roles[] securely
+      await seedProfile({ userId, fullName, requestedRole: signupAs });
+
+      setSuccess(true);
+      setTimeout(() => router.push("/public/login"), 3000);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message ?? "Sign-up failed.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const userId = data.user?.id;
-    if (!userId) {
-      alert("Sign-up created, but no user ID yet. Check your email confirmation settings.");
-      setLoading(false);
-      return;
-    }
-
-    // Step 2: Log the exact values being sent to Supabase
-    // This will appear in the browser's developer console to help debug issues
-    console.log("INSERTING PROFILE", userId, fullName, signupAs);
-
-    // Step 3: Insert the user profile into your database
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: userId,
-      full_name: fullName,
-      role: signupAs,
-    });
-
-    if (profileError) {
-      alert(profileError.message);
-      setLoading(false);
-      return;
-    }
-
-    setSuccess(true); // Show confirmation message
-    setLoading(false);
-
-    // Step 4: Redirect to login after a short pause (3 seconds)
-    setTimeout(() => router.push("/public/login"), 3000);
   };
 
   return (
@@ -91,42 +79,23 @@ export default function SignUpPage() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+
         <div className="space-y-2">
           <div className="font-medium">Sign up as</div>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="role"
-              value="customer"
-              checked={signupAs === "customer"}
-              onChange={() => setSignupAs("customer")}
-            />
-            Customer
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="role"
-              value="restaurant"
-              checked={signupAs === "restaurant"}
-              onChange={() => setSignupAs("restaurant")}
-            />
-            Restaurant (vendor)
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="role"
-              value="admin"
-              checked={signupAs === "admin"}
-              onChange={() => setSignupAs("admin")}
-            />
-            Admin
-          </label>
-          <p className="text-sm text-gray-600">
-            <span className="font-semibold text-red-600">Warning:</span> Only select Admin for trusted accounts. For production, restrict admin role assignment to internal users.
-          </p>
+          {["customer", "restaurant", "admin"].map((role) => (
+            <label key={role} className="flex items-center gap-2 capitalize">
+              <input
+                type="radio"
+                name="role"
+                value={role}
+                checked={signupAs === role}
+                onChange={() => setSignupAs(role as typeof signupAs)}
+              />
+              {role}
+            </label>
+          ))}
         </div>
+
         <button
           type="submit"
           disabled={loading}
@@ -134,6 +103,7 @@ export default function SignUpPage() {
         >
           {loading ? "Creating..." : "Sign Up"}
         </button>
+
         <p className="text-center text-sm">
           Already have an account?{" "}
           <a className="text-blue-600 hover:underline" href="/public/login">
@@ -141,11 +111,7 @@ export default function SignUpPage() {
           </a>
         </p>
       </form>
-      {success && (
-        <div className="mt-6 p-4 rounded shadow bg-green-50 text-green-700 border border-green-300 text-center">
-          Please check your email to confirm your registration.
-        </div>
-      )}
+
     </main>
   );
 }
