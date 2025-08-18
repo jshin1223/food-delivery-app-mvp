@@ -1,9 +1,7 @@
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import Link from "next/link"; // Add the missing Link import
 
 export default function LoginPage() {
   const supabase = createSupabaseBrowserClient();
@@ -11,60 +9,84 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
 
-    if (error) {
-      setError(error.message);
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.session) {
+    alert(error?.message ?? "Login failed or session not created.");
+    return;
+  }
+  const { user } = data.session;
+  console.log("Logged in user:", user);
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("roles")
+    .eq("id", user.id)
+    .single();
+
+  console.log("Profile fetch result:", profile, "Error:", profileError);
+
+  if (profileError || !profile?.roles) {
+    router.push("/browse");
+    return;
+  }
+
+console.log("Roles from DB:", profile.roles);
+
+if (Array.isArray(profile.roles)) {
+  if (profile.roles.includes("restaurant")) {
+    console.log("Redirecting to /restaurant/dashboard");
+    router.push("/restaurant/dashboard");
+  } else if (profile.roles.includes("admin")) {
+    console.log("Redirecting to /admin/dashboard");
+    router.push("/admin/dashboard");
+  } else if (profile.roles.includes("customer")) {
+    console.log("Redirecting to /customer/dashboard");
+    router.push("/customer/dashboard");
+  } else {
+    console.log("No known role match, redirecting to /browse");
+    router.push("/browse");
+  }
+} else {
+  console.log("roles is not an array, redirect to /browse");
+  router.push("/browse");
+}
+
+    if (Array.isArray(profile.roles)) {
+      if (profile.roles.includes("restaurant")) {
+        router.push("/restaurant/dashboard");
+      } else if (profile.roles.includes("admin")) {
+        router.push("/admin/dashboard");
+      } else if (profile.roles.includes("customer")) {
+        router.push("/customer/dashboard");
+      } else {
+        router.push("/browse");
+      }
     } else {
-      router.push("/"); // redirect to home
+      router.push("/browse");
     }
   };
 
   return (
-    <main className="p-6 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Login</h1>
-      <form onSubmit={handleLogin} className="space-y-4">
-        <div>
-          <label className="block mb-1">Email</label>
-          <input
-            type="email"
-            className="w-full border px-3 py-2 rounded"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block mb-1">Password</label>
-          <input
-            type="password"
-            className="w-full border px-3 py-2 rounded"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-
-        {error && <p className="text-red-600">{error}</p>}
-
-        <button type="submit" className="w-full bg-blue-600 text-white px-3 py-2 rounded">
-          Log In
-        </button>
-      </form>
-
-      <div className="mt-4 text-center">
-        <Link href="/public/forgot-password" className="text-blue-600 hover:underline">
-          Forgot your password?
-        </Link>
-      </div>
-    </main>
+    <form onSubmit={handleLogin}>
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        required
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+        required
+      />
+      <button type="submit">Log In</button>
+    </form>
   );
 }

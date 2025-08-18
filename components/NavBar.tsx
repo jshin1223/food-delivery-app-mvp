@@ -1,3 +1,4 @@
+// components/Navbar.tsx
 "use client";
 
 import Link from "next/link";
@@ -12,9 +13,21 @@ export default function Navbar() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const pickRole = (roles: string[] | null | undefined): Role => {
+      if (!roles || roles.length === 0) return null;
+      if (roles.includes("admin")) return "admin";
+      if (roles.includes("restaurant")) return "restaurant";
+      if (roles.includes("customer")) return "customer";
+      return (roles[0] as Role) ?? null;
+    };
+
     const fetchRole = async () => {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         setRole(null);
         setLoading(false);
@@ -27,26 +40,30 @@ export default function Navbar() {
         .eq("id", user.id)
         .single();
 
-      if (error || !data?.roles) {
-        console.warn("Error fetching role:", error);
+      if (error) {
+        console.warn("Error fetching roles:", error);
         setRole(null);
       } else {
-        setRole(data.roles as Role);
+        setRole(pickRole(data?.roles));
       }
 
       setLoading(false);
     };
 
+    // initial fetch
     fetchRole();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+    // subscribe to auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
       fetchRole();
     });
 
     return () => {
-      listener?.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
   return (
     <nav className="w-full bg-blue-600 text-white px-6 py-3 shadow-md">
@@ -79,7 +96,7 @@ export default function Navbar() {
                   <Link href="/customer/orders" className="hover:underline">
                     My Orders
                   </Link>
-                  <Link href="/logout" className="hover:underline">
+                  <Link href="/public/logout" className="hover:underline">
                     Logout
                   </Link>
                 </>
@@ -91,7 +108,7 @@ export default function Navbar() {
                   <Link href="/restaurant/dashboard" className="hover:underline">
                     Restaurant Dashboard
                   </Link>
-                  <Link href="/logout" className="hover:underline">
+                  <Link href="/public/logout" className="hover:underline">
                     Logout
                   </Link>
                 </>
@@ -103,7 +120,7 @@ export default function Navbar() {
                   <Link href="/admin/orders" className="hover:underline">
                     Admin Orders
                   </Link>
-                  <Link href="/logout" className="hover:underline">
+                  <Link href="/public/logout" className="hover:underline">
                     Logout
                   </Link>
                 </>

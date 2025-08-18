@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { seedProfile } from "../actions"; // ✅ FIXED
+import { seedProfile } from "../actions"; // You already have this
 
 export default function SignUpPage() {
   const supabase = createSupabaseBrowserClient();
@@ -15,6 +15,7 @@ export default function SignUpPage() {
   const [signupAs, setSignupAs] = useState<"customer" | "restaurant" | "admin">("customer");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [message, setMessage] = useState("");
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,19 +34,23 @@ export default function SignUpPage() {
 
       const userId = data.user?.id;
       if (!userId) {
-        alert("Sign-up created, but no user ID yet. Check your email confirmation settings.");
+        setMessage("Sign-up successful! Please check your email for a confirmation link before logging in.");
+        setSuccess(true);
         setLoading(false);
         return;
       }
 
-      // ✅ call server action to insert roles[] securely
+      // Insert profile securely; backend should use "roles" column
       await seedProfile({ userId, fullName, requestedRole: signupAs });
 
       setSuccess(true);
+      setMessage("Sign-up successful! Please check your email for a confirmation link before logging in.");
+
+      // Redirect to login after 3 seconds
       setTimeout(() => router.push("/public/login"), 3000);
     } catch (err: any) {
+      setMessage(err?.message ?? "Sign-up failed. Please try again.");
       console.error(err);
-      alert(err?.message ?? "Sign-up failed.");
     } finally {
       setLoading(false);
     }
@@ -79,7 +84,6 @@ export default function SignUpPage() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-
         <div className="space-y-2">
           <div className="font-medium">Sign up as</div>
           {["customer", "restaurant", "admin"].map((role) => (
@@ -95,7 +99,6 @@ export default function SignUpPage() {
             </label>
           ))}
         </div>
-
         <button
           type="submit"
           disabled={loading}
@@ -103,7 +106,6 @@ export default function SignUpPage() {
         >
           {loading ? "Creating..." : "Sign Up"}
         </button>
-
         <p className="text-center text-sm">
           Already have an account?{" "}
           <a className="text-blue-600 hover:underline" href="/public/login">
@@ -112,6 +114,12 @@ export default function SignUpPage() {
         </p>
       </form>
 
+      {(message || success) && (
+        <div className={`mt-6 p-4 rounded shadow border text-center
+          ${success ? 'bg-green-50 text-green-700 border-green-300' : 'bg-red-50 text-red-700 border-red-300'}`}>
+          {message}
+        </div>
+      )}
     </main>
   );
 }
