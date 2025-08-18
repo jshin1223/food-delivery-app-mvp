@@ -1,4 +1,4 @@
-# 🍽️ Food Delivery App MVP
+# 🍽️ Food Ordering App MVP
 
 An MVP (Minimum Viable Product) for a restaurant ordering and admin management system.  
 Built with **Next.js (App Router)**, **TypeScript**, **Supabase**, and **TailwindCSS**.
