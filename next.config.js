@@ -4,8 +4,8 @@ const nextConfig = {
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "picsum.photos" },
-      // add this if you will use Supabase Storage public URLs
       { protocol: "https", hostname: "**.supabase.co" },
+      { protocol: "https", hostname: "hips.hearstapps.com" }, // <- added
     ],
   },
 };

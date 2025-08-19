@@ -1,10 +1,50 @@
 // app/browse/page.tsx
 import Image from "next/image";
 import { supabaseServerRSC } from "@/lib/supabase/server";
-import BoxesRealtimeClient from "@/components/BoxesRealtimeClient";
+import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+
+// ✅ Server action for purchasing
+export async function purchase(formData: FormData) {
+  "use server";
+  const supabase = createServerActionClient({ cookies });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not signed in");
+
+  const boxId = formData.get("box_id") as string;
+
+  const { error } = await supabase.rpc("purchase_box", {
+    p_box_id: boxId,
+    p_customer_id: user.id,
+    p_qty: 1,
+  });
+
+  if (error) throw new Error(error.message);
+}
 
 export default async function BrowsePage() {
   const supabase = await supabaseServerRSC();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let isCustomer = false;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("roles")
+      .eq("id", user.id)
+      .single();
+
+    // roles is expected to be an array, e.g., ["customer"]
+    isCustomer = Array.isArray(profile?.roles) && profile.roles.includes("customer");
+  }
+
   const { data: boxes } = await supabase
     .from("boxes")
     .select("id, title, price_cents, qty_available, image_url")
@@ -13,10 +53,9 @@ export default async function BrowsePage() {
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-4">
       <h1 className="text-2xl font-bold">Browse Boxes</h1>
-      <BoxesRealtimeClient />
 
       {!boxes?.length ? (
-        <p className="text-gray-600">No boxes yet.</p>
+        <p className="text-gray-600">No boxes available.</p>
       ) : (
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {boxes.map((b) => {
@@ -42,25 +81,18 @@ export default async function BrowsePage() {
                     • {b.qty_available} left
                   </div>
 
-                  <form
-                    action={async () => {
-                      "use server";
-                      const supabase = await supabaseServerRSC();
-                      await supabase.rpc("purchase_box", {
-                        p_box_id: b.id,
-                        p_customer_id: "REPLACE_ME", // <-- Fix this
-                        p_qty: 1,
-                      });
-                    }}
-                  >
-                    <button
-                      type="submit"
-                      disabled={soldOut}
-                      className="w-full rounded-lg px-3 py-2 bg-blue-600 text-white disabled:opacity-50"
-                    >
-                      {soldOut ? "Sold out" : "Reserve"}
-                    </button>
-                  </form>
+                  {isCustomer && (
+                    <form action={purchase}>
+                      <input type="hidden" name="box_id" value={b.id} />
+                      <button
+                        type="submit"
+                        disabled={soldOut}
+                        className="w-full rounded-lg px-3 py-2 bg-blue-600 text-white disabled:opacity-50"
+                      >
+                        {soldOut ? "Sold out" : "Reserve"}
+                      </button>
+                    </form>
+                  )}
                 </div>
               </li>
             );

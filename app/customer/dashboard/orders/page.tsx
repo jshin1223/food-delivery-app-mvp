@@ -3,7 +3,9 @@ import { supabaseServerRSC } from "@/lib/supabase/server";
 
 export default async function CustomerOrdersPage() {
   const supabase = await supabaseServerRSC();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return <p className="p-6">Please sign in.</p>;
 
   const { data: orders } = await supabase
@@ -20,13 +22,18 @@ export default async function CustomerOrdersPage() {
       ) : (
         <ul className="space-y-3">
           {orders.map((o) => (
-            <li key={o.id} className="border rounded p-3 flex items-center justify-between">
+            <li
+              key={o.id}
+              className="border rounded p-3 flex items-center justify-between"
+            >
               <div>
                 <div className="font-semibold">{o.boxes?.title ?? "Box"}</div>
                 <div className="text-sm">
-                  Qty {o.qty} • ${(o.unit_price_cents/100).toFixed(2)}
+                  Qty {o.qty} • ${(o.unit_price_cents / 100).toFixed(2)}
                 </div>
-                <div className="text-xs opacity-70">{new Date(o.created_at).toLocaleString()}</div>
+                <div className="text-xs opacity-70">
+                  {new Date(o.created_at).toLocaleString()}
+                </div>
               </div>
               <div className="text-sm">{o.status}</div>
             </li>
