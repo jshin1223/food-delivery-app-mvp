@@ -1,28 +1,56 @@
 // app/browse/page.tsx
 import Image from "next/image";
 import { supabaseServerRSC } from "@/lib/supabase/server";
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
 
-// ✅ Server action for purchasing
+export const dynamic = "force-dynamic";
+
+// Server action lives in the same file, directive goes INSIDE the function
 export async function purchase(formData: FormData) {
   "use server";
   const supabase = createServerActionClient({ cookies });
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) throw new Error("Not signed in");
+  if (!user) {
+    // You can redirect to your actual login route if different
+    redirect("/public/login?next=/browse");
+  }
 
-  const boxId = formData.get("box_id") as string;
+  const boxId = String(formData.get("box_id") ?? "");
+  const qty = Number(formData.get("qty") ?? 1);
 
+  if (!boxId) throw new Error("Missing box_id");
+  if (!Number.isFinite(qty) || qty < 1) throw new Error("Invalid quantity");
+
+  // Optional sanity check before RPC
+  const { data: box, error: boxErr } = await supabase
+    .from("boxes")
+    .select("qty_available")
+    .eq("id", boxId)
+    .single();
+
+  if (boxErr || !box) throw new Error("Box not found");
+  if (box.qty_available < qty) throw new Error("Insufficient stock");
+
+  // Call your purchase RPC
   const { error } = await supabase.rpc("purchase_box", {
     p_box_id: boxId,
     p_customer_id: user.id,
-    p_qty: 1,
+    p_qty: qty,
   });
-
   if (error) throw new Error(error.message);
+
+  // Refresh pages that show stock & orders
+  revalidatePath("/browse");
+  revalidatePath("/customer/dashboard/orders");
+
+  redirect("/customer/dashboard/orders");
 }
 
 export default async function BrowsePage() {
