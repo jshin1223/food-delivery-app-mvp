@@ -108,6 +108,7 @@ export default function Navbar() {
                   <Link href="/restaurant/dashboard" className="hover:underline">
                     Restaurant Dashboard
                   </Link>
+                  <Link href="/restaurant/dashboard/orders">Restaurant Orders</Link>
                   <Link href="/public/logout" className="hover:underline">
                     Logout
                   </Link>
