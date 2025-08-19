@@ -93,7 +93,7 @@ export default function Navbar() {
               {role === "customer" && (
                 <>
                   <span className="text-sm text-gray-200">Logged in as Customer</span>
-                  <Link href="/customer/orders" className="hover:underline">
+                  <Link href="/customer/dashboard/orders" className="hover:underline">
                     My Orders
                   </Link>
                   <Link href="/public/logout" className="hover:underline">
