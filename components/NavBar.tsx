@@ -118,8 +118,8 @@ export default function Navbar() {
               {role === "admin" && (
                 <>
                   <span className="text-sm text-gray-200">Logged in as Admin</span>
-                  <Link href="/admin/orders" className="hover:underline">
-                    Admin Orders
+                  <Link href="/admin/dashboard" className="hover:underline">
+                    Admin Dashboard
                   </Link>
                   <Link href="/public/logout" className="hover:underline">
                     Logout
