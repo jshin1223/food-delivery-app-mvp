@@ -82,17 +82,16 @@ export default async function BrowsePage() {
                   </div>
 
                   {isCustomer && (
-                    <form action={purchase}>
-                      <input type="hidden" name="box_id" value={b.id} />
-                      <button
-                        type="submit"
-                        disabled={soldOut}
-                        className="w-full rounded-lg px-3 py-2 bg-blue-600 text-white disabled:opacity-50"
-                      >
-                        {soldOut ? "Sold out" : "Reserve"}
-                      </button>
-                    </form>
+                    <a
+                      href={`/customer/dashboard/payment?box_id=${b.id}`}
+                      className={`block w-full rounded-lg px-3 py-2 bg-blue-600 text-white text-center ${
+                        soldOut ? "opacity-50 pointer-events-none" : ""
+                      }`}
+                    >
+                      {soldOut ? "Sold out" : "Reserve"}
+                    </a>
                   )}
+
                 </div>
               </li>
             );

@@ -1,35 +1,16 @@
-// middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 
 function hasAny(roles: string[] | null | undefined, allowed: string[]) {
   return !!roles && allowed.some((r) => roles.includes(r));
 }
 
 export async function middleware(req: NextRequest) {
-  // Always create a response to pass into the SSR client cookie adapter
   const res = NextResponse.next();
 
-  // Use @supabase/ssr in middleware so cookie format matches the rest of your app
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return req.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          // write cookie to the response (middleware is allowed to modify cookies)
-          res.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: any) {
-          res.cookies.set({ name, value: "", ...options, maxAge: 0 });
-        },
-      },
-    }
-  );
+  // Use auth-helpers' middleware client for session compatibility
+  const supabase = createMiddlewareClient({ req, res });
 
   const { pathname } = req.nextUrl;
   const needsRestaurant = pathname.startsWith("/restaurant");
@@ -39,14 +20,12 @@ export async function middleware(req: NextRequest) {
   if (!needsRestaurant && !needsAdmin) return res;
 
   // Must be logged in
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     const url = req.nextUrl.clone();
     url.pathname = "/public/login";
-    url.searchParams.set("next", pathname); // optional: send them back after login
+    url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 

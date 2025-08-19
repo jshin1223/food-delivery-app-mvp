@@ -1,44 +1,47 @@
-'use server';
+"use server";
 
-import { supabaseServer } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { supabaseServerRSC, supabaseServer } from "@/lib/supabase/server";
 
-// List Boxes
+/** Fetch boxes for the logged-in restaurant (owner) */
 export async function getMyBoxes() {
-  const sb = await supabaseServer();
-  const { data: { user }, error: authError } = await sb.auth.getUser();
-  if (authError || !user) throw new Error("Not signed in");
+  const supabase = await supabaseServerRSC();
 
-  const { data: profile } = await sb.from("profiles").select("roles").eq("id", user.id).single();
-  if (!profile?.roles?.includes("restaurant")) throw new Error("Not authorized");
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  const { data, error } = await sb
+  if (authError || !user) {
+    throw new Error("Not signed in");
+  }
+
+  const { data, error } = await supabase
     .from("boxes")
     .select("*")
-    .eq("owner_id", user.id)
+    .eq("owner_id", user.id) // ✅ use owner_id per your schema
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
   return data ?? [];
 }
 
-// Create Box
+/** Create a new Wyzly Box */
 export async function createBox(formData: FormData) {
-  const sb = await supabaseServer();
-  const { data: { user }, error: authError } = await sb.auth.getUser();
-  if (authError || !user) throw new Error("Not signed in");
+  const supabase = await supabaseServer();
 
-  const { data: profile } = await sb.from("profiles").select("roles").eq("id", user.id).single();
-  if (!profile?.roles?.includes("restaurant")) throw new Error("Not authorized");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
 
-  const title = String(formData.get("title") || "");
-  const price_cents = Number(formData.get("price_cents") || 0);
-  const qty_available = Number(formData.get("qty_available") || 0);
-  const image_url = String(formData.get("image_url") || "");
+  const title = (formData.get("title") as string)?.trim();
+  const price_cents = Number(formData.get("price_cents"));
+  const qty_available = Number(formData.get("qty_available"));
+  const image_url = (formData.get("image_url") as string) || null;
 
-  if (!title || price_cents < 0 || qty_available < 0) throw new Error("Invalid input");
-
-  const { error } = await sb.from("boxes").insert({
-    owner_id: user.id,
+  const { error } = await supabase.from("boxes").insert({
+    owner_id: user.id,     // ✅ use owner_id
     title,
     price_cents,
     qty_available,
@@ -46,35 +49,55 @@ export async function createBox(formData: FormData) {
   });
 
   if (error) throw new Error(error.message);
+
+  revalidatePath("/restaurant/dashboard");
 }
 
-// Update Box (no stock restrictions)
+/** Update an existing box (owned by current user) */
 export async function updateBox(formData: FormData) {
-  const sb = await supabaseServer();
-  const id = String(formData.get("id") || "");
-  const title = String(formData.get("title") || "");
-  const price_cents = Number(formData.get("price_cents") || 0);
-  const qty_available = Number(formData.get("qty_available") || 0);
-  const image_url = String(formData.get("image_url") || "");
+  const supabase = await supabaseServer();
 
-  if (!id || !title || price_cents < 0 || qty_available < 0) throw new Error("Invalid input");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
 
-  const { error } = await sb.from("boxes").update({
-    title,
-    price_cents,
-    qty_available,
-    image_url,
-  }).eq("id", id);
+  const id = formData.get("id") as string;
+  const title = (formData.get("title") as string)?.trim();
+  const price_cents = Number(formData.get("price_cents"));
+  const qty_available = Number(formData.get("qty_available"));
+  const image_url = (formData.get("image_url") as string) || null;
+
+  // Optional: enforce ownership in the update where clause
+  const { error } = await supabase
+    .from("boxes")
+    .update({ title, price_cents, qty_available, image_url })
+    .eq("id", id)
+    .eq("owner_id", user.id); // ✅ only update your own
 
   if (error) throw new Error(error.message);
+
+  revalidatePath("/restaurant/dashboard");
 }
 
-// Delete Box
+/** Delete a box (owned by current user) */
 export async function deleteBox(formData: FormData) {
-  const sb = await supabaseServer();
-  const id = String(formData.get("id") || "");
-  if (!id) throw new Error("Invalid input");
+  const supabase = await supabaseServer();
 
-  const { error } = await sb.from("boxes").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+
+  const id = formData.get("id") as string;
+
+  const { error } = await supabase
+    .from("boxes")
+    .delete()
+    .eq("id", id)
+    .eq("owner_id", user.id); // ✅ only delete your own
+
   if (error) throw new Error(error.message);
+
+  revalidatePath("/restaurant/dashboard");
 }
